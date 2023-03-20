@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Discount DApp</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.6.0/dist/web3.min.js"></script>
+    <script>
+      window.addEventListener('load', async () => {
+        if (typeof window.ethereum !== 'undefined') {
+          try {
+            await window.ethereum.enable();
+          } catch (error) {
+            console.log(error);
+          }
+          window.web3 = new Web3(window.ethereum)
+        } else if (typeof window.web3 !== 'undefined') {
+          window.web3 = new Web3(window.web3.currentProvider)
+        } else {
+          console.log('No MetaMask detected')
+        }
+      })
+    </script>
+  </head>
+  <body>
+    <h1>Discount DApp</h1>
+    <h2>Buy with discount</h2>
+    <form>
+      <label for="discount-amount">Amount:</label>
+      <input type="number" id="discount-amount" name="amount" step="0.0001" />
+      <br />
+      <button type="button" onclick="buyWithDiscount()">Buy with discount</button>
+    </form>
+    <h2>Buy without discount</h2>
+    <form>
+      <label for="normal-amount">Amount:</label>
+      <input type="number" id="normal-amount" name="amount" step="0.0001" />
+      <br />
+      <button type="button" onclick="buy()">Buy</button>
+    </form>
+    <script>
+      const contractAddress = "0x9B466cebDDAE4cA06812695Cac4EE157C8755EbB"; // Discountコントラクトのアドレスを入力する
+      const abi = [
+        {
+          "inputs": [],
+          "stateMutability": "nonpayable",
+          "type": "constructor"
+        },
+        {
+          "inputs": [],
+          "name": "buy",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "buyWithDiscount",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "discountPrice",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "price",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ];
+
+      async function buy() {
+        const amount = document.getElementById("normal-amount").value;
+        const weiAmount = web3.utils.toWei(amount, "ether");
+        const contract = new web3.eth.Contract(abi, contractAddress);
+        const price = await contract.methods.price().call();
+        const totalWeiAmount = web3.utils.toBN(weiAmount).mul(web3.utils.toBN(price));
+        await contract.methods.buy().send({ value: totalWeiAmount.toString() });
+       }
+
+
+       async function buyWithDiscount() {
+        const amount = document.getElementById("discount-amount").value;
+        const weiAmount = web3.utils.toWei(amount, "ether");
+        const contract = new web3.eth.Contract(abi, contractAddress);
+        const discountPrice = await contract.methods.discountPrice().call();
+        const price = await contract.methods.price().call();
+
+        console.log("discountPrice:", discountPrice);
+        console.log("price:", price);
+
+        const discount = web3.utils.toBN(price).sub(web3.utils.toBN(discountPrice));
+        const discountedWeiAmount = web3.utils.toBN(weiAmount).sub(discount);
+
+        console.log("discount:", discount.toString());
+        console.log("discountedWeiAmount:", discountedWeiAmount.toString());
+
+        await contract.methods.buyWithDiscount().send({ value: discountedWeiAmount.toString() });
+       }
+    </script>
+  </body>
+</html>
